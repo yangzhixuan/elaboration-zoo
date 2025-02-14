@@ -1,7 +1,8 @@
 
 module Main where
 
-import Prelude hiding (lookup, length)
+import Prelude hiding (lookup, length, even)
+import qualified Prelude (length)
 import Control.Applicative hiding (many, some)
 import Data.Void
 import System.Environment
@@ -158,6 +159,94 @@ instance Show Tm where showsPrec = prettyTm
 -- main
 --------------------------------------------------------------------------------
 
+var = Var
+lam = Lam
+app = App
+infixl 4 `app` 
+
+-- Church numeral of 3
+c3 :: Tm
+c3 = Lam (Lam (Var 1 `app` (Var 1 `app` (Var 1 `app` Var 0))))
+--c3 = lam (\f -> lam (\x -> var f `app` (var f `app` (var f `app` var x))))
+
+cadd :: Tm
+cadd = Lam (Lam (Lam (Lam ( 
+          Var 3 `app` Var 1 
+            `app` (Var 2 `app` Var 1 `app` Var 0)))))
+
+--cadd = lam (\n -> lam (\m -> lam (\f -> lam (\x -> 
+--          var n `app` var f 
+--            `app` (var m `app` var f `app` var x)))))
+
+t3 :: Tm
+t3 = cadd `app` c3 `app` c3
+
+-- printLam (norm t3)
+-- (λ x1. (λ x2. x1 x1 x1 x1 x1 x1 x2))
+
+cmul :: Tm
+cmul = lam (lam (lam (lam ( 
+         var 3 `app` (var 2 `app` var 1) `app` var 0))))
+
+t4 :: Tm
+t4 = cmul `app` t3 `app` t3
+
+t5 :: Tm
+t5 = cmul `app` t4 `app` t4
+
+t6 :: Tm
+t6 = cmul `app` t4 `app` t5
+
+t7 :: Tm
+t7 = cmul `app` t5 `app` t4
+
+t8 :: Tm
+t8 = cmul `app` t6 `app` t3
+
+
+cnum :: Int -> Tm
+cnum n = lam (lam (go n)) where
+  go 0 = var 0
+  go n = var 1 `app` (go (n - 1))
+
+-- \x y . x
+tt :: Tm
+tt = lam (lam (var 1))
+
+-- \x y . y
+ff :: Tm
+ff = lam (lam (var 0))
+
+
+-- \b x y . b y x
+neg :: Tm
+neg = lam (lam (lam ((var 2 `app` var 0) `app` var 1)))
+
+-- \b c x y . b (c x y) y
+cand :: Tm
+cand = lam (lam (lam (lam ((var 3 `app` (var 2 `app` var 1 `app` var 0)) `app` var 0))))
+
+-- \n . n neg tt 
+even :: Tm 
+even = lam ((var 0 `app` neg) `app` tt)
+
+
+-- NbE is slow on this term: normalising this term is quadratic wrt to the number 50000
+-- in this term because `f` is re-normalised in every function call.
+t10 :: Tm
+t10 = cnum 50000 `app` (lam (cand `app` (f `app` var 0) `app` var 0)) `app` tt where
+  expensive = even `app` (cnum 50000)
+  f = lam expensive
+
+
+badShow :: Tm -> String 
+badShow (Var x) = show x
+badShow (App x y) = badShow x ++ " " ++ badShow y
+badShow (Lam body) = "(λ " ++ show ". " ++ badShow body ++ ")"
+
+main :: IO ()
+main = print (nf Nil t10)
+
 helpMsg = unlines [
   "usage: elabzoo-eval [--help|nf]",
   "  --help : display this message",
@@ -170,8 +259,8 @@ mainWith getOpt getTm = do
     ["nf"]     -> print . nf Nil  =<< getTm
     _          -> putStrLn helpMsg
 
-main :: IO ()
-main = mainWith getArgs parseStdin
+--main :: IO ()
+--main = mainWith getArgs parseStdin
 
 -- | Run main with inputs as function arguments.
 main' :: String -> String -> IO ()

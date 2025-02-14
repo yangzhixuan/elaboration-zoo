@@ -30,7 +30,7 @@ executable elabzoo-eval-closures-debruijn
       DerivingVia
       LambdaCase
       Strict
-  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-do-bind -Wno-unused-matches -O
+  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-do-bind -Wno-unused-matches -O2
   build-depends:
       base >=4.7 && <5
     , megaparsec
